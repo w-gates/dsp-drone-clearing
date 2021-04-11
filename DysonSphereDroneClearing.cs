@@ -46,6 +46,7 @@ namespace DysonSphereDroneClearing
         public static BepInEx.Configuration.ConfigEntry<bool> configEnableClearingWhileFlying;
         public static BepInEx.Configuration.ConfigEntry<bool> configEnableRecallWhileFlying;
         public static BepInEx.Configuration.ConfigEntry<uint> configReservedInventorySpace;
+        public static BepInEx.Configuration.ConfigEntry<bool> configDropWhenInventoryFull;
         public static BepInEx.Configuration.ConfigEntry<float> configReservedPower;
         public static BepInEx.Configuration.ConfigEntry<float> configSpeedScaleFactor;
         public static BepInEx.Configuration.ConfigEntry<bool> configEnableInstantClearing;
@@ -124,7 +125,8 @@ namespace DysonSphereDroneClearing
                                 int minedItemCount = (int)((float)vegeProto.MiningCount[itemIdx] * (vegeData.scl.y * vegeData.scl.y) + 0.5f);
                                 if (minedItemCount > 0 && LDB.items.Select(minedItem) != null)
                                 {
-                                    int inventoryOverflowCount = this.player.package.AddItemStacked(minedItem, minedItemCount);
+                                    //int inventoryOverflowCount = this.player.package.AddItemStacked(minedItem, minedItemCount);
+                                    int inventoryOverflowCount = this.player.TryAddItemToPackage(minedItem, minedItemCount, configDropWhenInventoryFull.Value);
                                     if (inventoryOverflowCount != 0)
                                     {
                                         UIItemup.Up(minedItem, inventoryOverflowCount);
@@ -173,7 +175,7 @@ namespace DysonSphereDroneClearing
             public DroneAction_Mine mineAction = null;
             public CircleGizmo miningTargetGizmo = null;
             public bool miningFlag = false;
-            public ParticleSystem torchEffect = null;
+            //public ParticleSystem torchEffect = null;
         }
         public static List<DroneClearingMissionData> activeMissions = new List<DroneClearingMissionData> { };
 
@@ -327,7 +329,8 @@ namespace DysonSphereDroneClearing
             configEnableClearingWhileDrifting = Config.Bind<bool>("Config", "ClearWhileDrifting", true, "This flag can be used to enable/disable clearing while drifing over oceans.");
             configEnableClearingWhileFlying = Config.Bind<bool>("Config", "ClearWhileFlying", false, "This flag can be used to enable/disable clearing while flying.");
             configEnableRecallWhileFlying = Config.Bind<bool>("Config", "RecallWhileFlying", true, "Enable this feature if you want drones assigned to clearing to be recalled when Icarus is flying. (This setting is only used if configEnableClearingWhileFlying is false.)");
-            configReservedInventorySpace = Config.Bind<uint>("Config", "InventorySpace", 10, "Initiate clearing when there are this number of inventory spaces empty.  (Setting has no impact if CollectResources is false.)");
+            configReservedInventorySpace = Config.Bind<uint>("Config", "InventorySpace", 0, new BepInEx.Configuration.ConfigDescription("Initiate clearing when there are this number of inventory spaces empty.  (Setting has no impact if CollectResources is false.)", new BepInEx.Configuration.AcceptableValueRange<uint>(0, 120)));
+            configDropWhenInventoryFull = Config.Bind<bool>("Config", "DropWhenInventoryFull", false, "Drop collected resources on the ground if the inventory is full. (This setting overrides InventorySpace to 0)(Setting has no impact if CollectResources is false.)");
             configReservedPower = Config.Bind<float>("Config", "PowerReserve", 0.4f, new BepInEx.Configuration.ConfigDescription("Initiate clearing only when there is at least this fraction of Icarus's power remaining.", new BepInEx.Configuration.AcceptableValueRange<float>(0, 1)));
             configSpeedScaleFactor = Config.Bind<float>("Config", "SpeedScale", 1.0f, "Is this mod so great that it feels too much like cheating?  Slow the drones down with this setting.  They normally operate at the same speed as Icarus.  Too slow?  You can cheat too by setting a value greater than 1.");
             configEnableInstantClearing = Config.Bind<bool>("Config", "DSPCheats_InstantClearing", false, "If the DSP Cheats mod is installed, and Instant-Build is enabled, should this mod work with that one and instantly clear?");
@@ -491,11 +494,11 @@ namespace DysonSphereDroneClearing
                                 if (missionData.mineAction.miningType == EObjectType.Entity)
                                 {
                                     missionData.miningTargetGizmo.Close();
-                                    if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
-                                    {
-                                        missionData.torchEffect.Stop();
-                                        ParticleSystem.Destroy(missionData.torchEffect);
-                                    }
+                                    //if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
+                                    //{
+                                    //    missionData.torchEffect.Stop();
+                                    //    ParticleSystem.Destroy(missionData.torchEffect);
+                                    //}
                                     activeMissions.RemoveAt(activeMissionIdx);
                                 }
                             }
@@ -657,7 +660,7 @@ namespace DysonSphereDroneClearing
                             numEmptyInventorySlots++;
                         }
                     }
-                    if (numEmptyInventorySlots < configReservedInventorySpace.Value)
+                    if (!configDropWhenInventoryFull.Value && numEmptyInventorySlots < configReservedInventorySpace.Value)
                     {
                         if (configEnableDebug.Value)
                         {
@@ -808,11 +811,11 @@ namespace DysonSphereDroneClearing
                             {
                                 // Clearing completed
                                 missionData.miningTargetGizmo.Close();
-                                if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
-                                {
-                                    missionData.torchEffect.Stop();
-                                    ParticleSystem.Destroy(missionData.torchEffect);
-                                }
+                                //if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
+                                //{
+                                //    missionData.torchEffect.Stop();
+                                //    ParticleSystem.Destroy(missionData.torchEffect);
+                                //}
                                 activeMissions.RemoveAt(activeMissionIdx);
                                 factory.RemovePrebuildData(prebuildId);
                             }
@@ -825,11 +828,11 @@ namespace DysonSphereDroneClearing
                                     {
                                         Logger.LogDebug("Item already mined.");
                                         missionData.miningTargetGizmo.Close();
-                                        if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
-                                        {
-                                            missionData.torchEffect.Stop();
-                                            ParticleSystem.Destroy(missionData.torchEffect);
-                                        }
+                                        //if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
+                                        //{
+                                        //    missionData.torchEffect.Stop();
+                                        //    ParticleSystem.Destroy(missionData.torchEffect);
+                                        //}
                                         activeMissions.RemoveAt(activeMissionIdx);
                                         factory.RemovePrebuildData(prebuildId);
                                     }
@@ -839,14 +842,20 @@ namespace DysonSphereDroneClearing
                                         {
                                             missionData.miningFlag = true;
                                             missionData.miningTargetGizmo.alphaMultiplier = 1f;
-                                            missionData.torchEffect = Instantiate(
-                                                GameMain.mainPlayer.effect.torchEffect,
-                                                __instance.position,
-                                                Quaternion.LookRotation(__instance.forward, __instance.position.normalized));
-                                            ParticleSystem spark = missionData.torchEffect.transform.Find("spark").GetComponent< ParticleSystem>();
-                                            ParticleSystem.MainModule sparkMain = spark.main;
-                                            sparkMain.startLifetime = 0.7f;  // 0.5 is too small.  1.0 is too much.
-                                            missionData.torchEffect.Play();
+                                            //if(GameMain.mainPlayer.effect.GetType().GetProperty("torchEffect") == null)
+                                            //{
+                                            //    //throw new Exception("This Should not WORK!");
+                                            //    //UpdateTipText("This Should not WORK!");
+                                            //    Logger.LogDebug("This Should not WORK!");
+                                            //}
+                                            //missionData.torchEffect = Instantiate(
+                                            //    GameMain.mainPlayer.effect.torchEffect,
+                                            //    __instance.position,
+                                            //    Quaternion.LookRotation(__instance.forward, __instance.position.normalized));
+                                            //ParticleSystem spark = missionData.torchEffect.transform.Find("spark").GetComponent<ParticleSystem>();
+                                            //ParticleSystem.MainModule sparkMain = spark.main;
+                                            //sparkMain.startLifetime = 0.7f;  // 0.5 is too small.  1.0 is too much.
+                                            //missionData.torchEffect.Play();
                                         }
                                         __result = 0;
                                     }
@@ -854,11 +863,11 @@ namespace DysonSphereDroneClearing
                                 else
                                 {
                                     missionData.miningTargetGizmo.Close();
-                                    if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
-                                    {
-                                        missionData.torchEffect.Stop();
-                                        ParticleSystem.Destroy(missionData.torchEffect);
-                                    }
+                                    //if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
+                                    //{
+                                    //    missionData.torchEffect.Stop();
+                                    //    ParticleSystem.Destroy(missionData.torchEffect);
+                                    //}
                                     activeMissions.RemoveAt(activeMissionIdx);
                                     factory.RemovePrebuildData(prebuildId);
                                     factory.RemoveVegeWithComponents(prebuild.upEntity);
@@ -886,11 +895,11 @@ namespace DysonSphereDroneClearing
             foreach (DroneClearingMissionData missionData in activeMissions)
             {
                 missionData.miningTargetGizmo.Close();
-                if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
-                {
-                    missionData.torchEffect.Stop();
-                    ParticleSystem.Destroy(missionData.torchEffect);
-                }
+                //if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
+                //{
+                //    missionData.torchEffect.Stop();
+                //    ParticleSystem.Destroy(missionData.torchEffect);
+                //}
             }
             activeMissions.Clear();
         }
@@ -953,11 +962,11 @@ namespace DysonSphereDroneClearing
             foreach (DroneClearingMissionData missionData in activeMissions)
             {
                 missionData.miningTargetGizmo.Close();
-                if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
-                {
-                    missionData.torchEffect.Stop();
-                    ParticleSystem.Destroy(missionData.torchEffect);
-                }
+                //if (missionData.torchEffect != null && missionData.torchEffect.isPlaying)
+                //{
+                //    missionData.torchEffect.Stop();
+                //    ParticleSystem.Destroy(missionData.torchEffect);
+                //}
             }
             activeMissions.Clear();
         }
